@@ -54,22 +54,25 @@ class PatientSetQueryBuilderService {
         def panelNum = 1
         def panelClauses = definition.panels.collect { Panel panel ->
 
-            def itemPredicates = panel.items.collect { Item it ->
-                OntologyTerm term
-                try {
-                    term = conceptsResourceService.getByKey(it.conceptKey)
-                    if (!(term instanceof MetadataSelectQuerySpecification)) {
-                        throw new InvalidArgumentsException("Ontology term " +
-                                "with key ${it.conceptKey} does not specify " +
-                                "a query")
-                    }
-                } catch (NoSuchResourceException nsr) {
-                    throw new InvalidRequestException("No such concept key: " +
-                            "$it.conceptKey", nsr)
-                }
-
-                doItem(term, it, user)
-            }
+//            def itemPredicates = panel.items.collect { Item it ->
+//                log.debug("####")
+//                log.debug(it.conceptKey)
+//                log.debug("####")
+//                OntologyTerm term
+//                try {
+//                    term = conceptsResourceService.getByKey(it.conceptKey)
+//                    if (!(term instanceof MetadataSelectQuerySpecification)) {
+//                        throw new InvalidArgumentsException("Ontology term " +
+//                                "with key ${it.conceptKey} does not specify " +
+//                                "a query")
+//                    }
+//                } catch (NoSuchResourceException nsr) {
+//                    throw new InvalidRequestException("No such concept key: " +
+//                            "$it.conceptKey", nsr)
+//                }
+//
+//                doItem(term, it, user)
+//            }
             /*
              * itemPredicates are similar to this example:
              * concept_cd IN
@@ -82,8 +85,18 @@ class PatientSetQueryBuilderService {
              *      (valtype_cd = 'N' AND nval_num >= 50 AND tval_char = 'G')
              * )
              */
-            def bigPredicate = itemPredicates.collect { "($it)" }.join(' OR ')
 
+            //TODO
+//          def  term = conceptsResourceService.getByKey(it.conceptKey)
+//            def bigPredicate = itemPredicates.collect { "($it)" }.join(' OR ')
+            def bigPredicate = " CONCEPT_CD IN ( SELECT CONCEPT_CD FROM CONCEPT_DIMENSION WHERE "
+            bigPredicate += panel.items.collect { "(CONCEPT_PATH LIKE ${getProcessedDimensionCode(conceptsResourceService.getByKey(it.conceptKey))} )" }.join(' OR ')
+            bigPredicate += " )"
+
+
+
+//log.debug("äää")
+            log.debug(bigPredicate)
             if (panel.items.size() > 1) {
                 bigPredicate = "($bigPredicate)"
             }
@@ -169,6 +182,7 @@ class PatientSetQueryBuilderService {
                           User user) {
         /* constraint represented by the ontology term */
         def clause = generateObservationFactConstraint(user, term)
+
         def conceptcd_subclause = clause
         /* additional (and optional) constraint by value */
         def constraint = item.constraint
@@ -204,6 +218,9 @@ class PatientSetQueryBuilderService {
                 log.warn("No implementation exists for building a patient set query for " + resource.getHighDimensionFilterType() + " data.")
             }
         }
+        log.debug("CLAUSE")
+        log.debug(clause)
+        log.debug("CLAUSE")
         clause
     }
 
@@ -291,7 +308,34 @@ class PatientSetQueryBuilderService {
                     'with an operator different from EQUAL_TO')
         }
     }
+    private String getProcessedDimensionCode(String spec) {
+        def v = spec
+        if (!v) {
+            return v
+        }
 
+//        if (spec.columnDataType == 'T' && v.length() > 2) {
+//            if (spec.operator.equalsIgnoreCase('like')) {
+                if (v[0] != "'" && !v[0] != '(') {
+                    if (v[-1] != '%') {
+                        if (v[-1] != '\\') {
+                            v += '\\'
+                        }
+                        v = v.asLikeLiteral() + '%'
+                    }
+                }
+//            }
+
+            if (v[0] != "'") {
+                v = v.replaceAll(/'/, "''") /* escape single quotes */
+                v = "'$v'"
+            }
+
+//        }
+
+
+        v
+    }
     private String getProcessedDimensionCode(MetadataSelectQuerySpecification spec) {
         def v = spec.dimensionCode
         if (!v) {
