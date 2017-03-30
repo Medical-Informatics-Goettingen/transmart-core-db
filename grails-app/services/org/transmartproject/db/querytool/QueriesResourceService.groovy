@@ -48,6 +48,8 @@ class QueriesResourceService implements QueriesResource {
     @Override
     QueryResult runQuery(QueryDefinition definition,
                          String username) throws InvalidRequestException {
+        log.warn "RUNQUERY"
+        log.warn username
         // 1. Populate qt_query_master
         QtQueryMaster queryMaster = new QtQueryMaster(
             name           : definition.name,

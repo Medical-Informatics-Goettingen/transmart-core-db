@@ -39,7 +39,7 @@ import static org.transmartproject.core.querytool.ConstraintByValue.Operator.*
 import static org.transmartproject.db.support.DatabasePortabilityService.DatabaseType.ORACLE
 
 class PatientSetQueryBuilderService {
-
+    def grailsApplication
     def conceptsResourceService
     def databasePortabilityService
     def highDimensionResourceService
@@ -54,25 +54,7 @@ class PatientSetQueryBuilderService {
         def panelNum = 1
         def panelClauses = definition.panels.collect { Panel panel ->
 
-//            def itemPredicates = panel.items.collect { Item it ->
-//                log.debug("####")
-//                log.debug(it.conceptKey)
-//                log.debug("####")
-//                OntologyTerm term
-//                try {
-//                    term = conceptsResourceService.getByKey(it.conceptKey)
-//                    if (!(term instanceof MetadataSelectQuerySpecification)) {
-//                        throw new InvalidArgumentsException("Ontology term " +
-//                                "with key ${it.conceptKey} does not specify " +
-//                                "a query")
-//                    }
-//                } catch (NoSuchResourceException nsr) {
-//                    throw new InvalidRequestException("No such concept key: " +
-//                            "$it.conceptKey", nsr)
-//                }
 //
-//                doItem(term, it, user)
-//            }
             /*
              * itemPredicates are similar to this example:
              * concept_cd IN
@@ -86,14 +68,39 @@ class PatientSetQueryBuilderService {
              * )
              */
 
-            //TODO
+            //TODO @Baumjamin
 //          def  term = conceptsResourceService.getByKey(it.conceptKey)
 //            def bigPredicate = itemPredicates.collect { "($it)" }.join(' OR ')
-            def bigPredicate = " CONCEPT_CD IN ( SELECT CONCEPT_CD FROM CONCEPT_DIMENSION WHERE "
-            bigPredicate += panel.items.collect { "(CONCEPT_PATH LIKE ${getProcessedDimensionCode(conceptsResourceService.getByKey(it.conceptKey))} )" }.join(' OR ')
-            bigPredicate += " )"
+            def bigPredicate
+           if (grailsApplication.config.misc.useFasterQuery) {
+               println("USING FASTER QUERY!")
+               bigPredicate = " CONCEPT_CD IN ( SELECT CONCEPT_CD FROM CONCEPT_DIMENSION WHERE "
+               bigPredicate += panel.items.collect {
+                   "(CONCEPT_PATH LIKE ${getProcessedDimensionCode(conceptsResourceService.getByKey(it.conceptKey))} )"
+               }.join(' OR ')
+               bigPredicate += " )"
 
+           }
+            else {
+               println("USING SLOW QUERY")
+               def itemPredicates = panel.items.collect { Item it ->
+                   OntologyTerm term
+                   try {
+                       term = conceptsResourceService.getByKey(it.conceptKey)
+                       if (!(term instanceof MetadataSelectQuerySpecification)) {
+                           throw new InvalidArgumentsException("Ontology term " +
+                                   "with key ${it.conceptKey} does not specify " +
+                                   "a query")
+                       }
+                   } catch (NoSuchResourceException nsr) {
+                       throw new InvalidRequestException("No such concept key: " +
+                               "$it.conceptKey", nsr)
+                   }
 
+                   doItem(term, it, user)
+               }
+               bigPredicate = itemPredicates.collect { "($it)" }.join(' OR ')
+           }
 
 //log.debug("äää")
             log.debug(bigPredicate)
