@@ -69,19 +69,18 @@ class PatientSetQueryBuilderService {
              */
 
             //TODO @Baumjamin
-//          def  term = conceptsResourceService.getByKey(it.conceptKey)
-//            def bigPredicate = itemPredicates.collect { "($it)" }.join(' OR ')
             def bigPredicate
-           if (grailsApplication.config.misc.useFasterQuery) {
-               println("USING FASTER QUERY!")
-               bigPredicate = " CONCEPT_CD IN ( SELECT CONCEPT_CD FROM CONCEPT_DIMENSION WHERE "
-               bigPredicate += panel.items.collect {
-                   "(CONCEPT_PATH LIKE ${getProcessedDimensionCode(conceptsResourceService.getByKey(it.conceptKey))} )"
-               }.join(' OR ')
-               bigPredicate += " )"
-
-           }
-            else {
+//            def bigPredicate_new
+//           if (grailsApplication.config.misc.useFasterQuery) {
+//               println("USING FASTER QUERY!")
+//            bigPredicate_new = " CONCEPT_CD IN ( SELECT CONCEPT_CD FROM CONCEPT_DIMENSION WHERE "
+//            bigPredicate_new += panel.items.collect {
+//                   "(CONCEPT_PATH LIKE ${getProcessedDimensionCode(conceptsResourceService.getByKey(it.conceptKey))} )"
+//               }.join(' OR ')
+//            bigPredicate_new += " )"
+//
+//           }
+//            else {
                println("USING SLOW QUERY")
                def itemPredicates = panel.items.collect { Item it ->
                    OntologyTerm term
@@ -100,10 +99,13 @@ class PatientSetQueryBuilderService {
                    doItem(term, it, user)
                }
                bigPredicate = itemPredicates.collect { "($it)" }.join(' OR ')
-           }
+//           }
 
 //log.debug("äää")
+//            log.debug("old")
             log.debug(bigPredicate)
+//            log.debug("new")
+//            log.debug(bigPredicate_new)
             if (panel.items.size() > 1) {
                 bigPredicate = "($bigPredicate)"
             }
